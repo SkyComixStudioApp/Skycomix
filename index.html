@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>SkyComix</title>
   <link rel="stylesheet" href="https://unpkg.com/@fortawesome/fontawesome-free@6.4.2/css/all.min.css" />
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  
   <style>
     /* 1. INCLUSIÓN DE LA FUENTE PERSONALIZADA */
     @font-face {
@@ -34,7 +31,7 @@
       --page-side-padding: 12px;
     }
 
-    /* Ajuste crítico para WebViews de Android */
+    /* Ajuste crítico para WebViews de Android: evitar text-autosize */
     html, body { 
       -webkit-text-size-adjust: 100% !important; 
       -ms-text-size-adjust: 100% !important; 
@@ -57,7 +54,15 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
     
-    /* ANIMACIÓN DE PARTÍCULAS DORADAS MANTENIDA SOLO PARA EL ICONO DE DONAR */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-view {
+      animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    /* ANIMACIÓN DE PARTÍCULAS DORADAS */
     @keyframes goldParticles {
       0% { text-shadow: 0 0 0px transparent; transform: translateY(0); opacity: 1; }
       50% { text-shadow: 0 5px 4px #ffd700, -3px 8px 2px #ffcc00; opacity: 0.8; }
@@ -111,6 +116,9 @@
       color: var(--text-red);
       outline: none;
       box-sizing: border-box;
+      background-repeat: no-repeat;
+      background-position: 12px center;
+      background-size: 20px 20px;
       margin-left: 0; 
     }
     .search-field::placeholder { 
@@ -144,6 +152,7 @@
       margin-bottom: 6px;
       border: 1px solid var(--controls-border);
       box-shadow: 0 1px 4px rgba(0,0,0,0.6);
+      transform: translateY(-3px);
     }
 
     .genre-header-item { display:flex; align-items:center; justify-content:space-between; width: 100%; }
@@ -214,6 +223,7 @@
 
     .cards-wrapper { 
         padding: 80px var(--page-side-padding) 80px; 
+        transition: padding-top 0.3s ease;
         min-height: calc(100vh - 144px);
         position: relative;
     }
@@ -224,6 +234,7 @@
       gap: 4px; 
     }
 
+    /* TEXTO ARCHIVADOS VACÍO */
     .empty-message {
       position: absolute;
       top: 45%;
@@ -251,31 +262,7 @@
       backdrop-filter: blur(var(--card-blur-strength));
       -webkit-backdrop-filter: blur(var(--card-blur-strength));
       transform: translateZ(0);
-      position: relative;
     }
-
-    .card-stats-overlay {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      z-index: 5;
-    }
-    .stat-badge {
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 8px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      color: #fff;
-    }
-    .stat-badge i.fa-heart { color: #ff4757; }
 
     .card .image-wrapper { position: relative; width: 100%; aspect-ratio: 3/4; background: #000; }
     .card .image-wrapper .spinner { position: absolute; top: 50%; left: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border: 3px solid var(--icon-color-active); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; z-index: 1; }
@@ -370,18 +357,17 @@
       flex-direction: column;
       z-index: 40;
       -webkit-overflow-scrolling: touch;
-      transition: opacity .28s ease, visibility 0s linear .28s;
+      filter: blur(10px) brightness(0.75);
+      transition: opacity .28s ease, filter .28s ease, visibility 0s linear .28s;
     }
-    .modal-overlay.show { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+    .modal-overlay.show { opacity: 1; visibility: visible; pointer-events: auto; filter: blur(0px) brightness(1); transition-delay: 0s; }
 
-    .modal-header { display:flex; align-items:center; justify-content:space-between; background:#000; padding: 12px 12px; border-bottom: 1px solid var(--modal-line); gap: 10px; }
-    .modal-header .modal-title { flex:1; font-weight: 700; color: var(--text-red); font-size: 16px; text-align: left; padding-left: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    
-    .modal-stats-top { display: flex; align-items: center; gap: 12px; margin-right: 5px; }
-    .modal-stat-item { font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
-    .modal-stat-item i.fa-heart { color: #ff4757; }
+    .modal-header, .modal-gallery { transform: translateY(6px); opacity: 0; transition: transform .36s cubic-bezier(.2,.85,.2,1), opacity .28s ease; }
+    .modal-overlay.show .modal-header, .modal-overlay.show .modal-gallery { transform: translateY(0); opacity: 1; }
 
-    .modal-header .circle { width:36px; height:36px; border-radius:50%; background: #121212; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink: 0; }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; background:#000; padding: 12px 12px; border-bottom: 1px solid var(--modal-line); }
+    .modal-header .modal-title { flex:1; font-weight: 700; color: var(--text-red); font-size: 16px; text-align: left; padding-left: 2px; }
+    .modal-header .circle { width:36px; height:36px; border-radius:50%; background: #121212; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-right: 6px; }
     .modal-header .circle i { font-size:14px; color: var(--icon-color-active); }
 
     .modal-gallery { flex:1; overflow-y:auto; display:block; gap:0; padding:0; background:#000; overscroll-behavior: contain; }
@@ -389,7 +375,7 @@
     .img-wrap .spinner { position: absolute; top: 50%; left: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border: 3px solid var(--icon-color-active); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; z-index: 2; }
     .img-wrap img { width:100%; height:auto; display:none; object-fit:cover; opacity: 0; transition: opacity 0.3s ease; }
 
-    #download-btn, #archive-btn, #like-btn { 
+    #download-btn, #archive-btn { 
       position: absolute; 
       right: 16px; 
       width: 48px; 
@@ -404,27 +390,27 @@
       justify-content: center; 
       cursor: pointer; 
       z-index: 42; 
-      transition: all 0.3s ease;
+      box-shadow: none;
+      transition: color 0.3s ease;
     }
     #download-btn { bottom: 16px; }
     #archive-btn { bottom: 74px; }
-    #like-btn { bottom: 132px; }
     
-    #download-btn i, #archive-btn i, #like-btn i { font-size: 20px; color: var(--icon-color-active); }
+    #download-btn i, #archive-btn i { font-size: 20px; color: var(--icon-color-active); }
     #archive-btn.is-archived i { color: #ffd700; }
-    #like-btn.is-liked i { color: #ff4757; transform: scale(1.1); }
 
     input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; margin: 0; }
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.5); margin-top: -7px; }
     input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.15); border-radius: 2px; }
+    input[type=range]:focus { outline: none; }
 
     @media (max-width:420px){
       .option-title { font-size:11px; }
       .option-icon { font-size:18px; width:20px; }
       .cards-container { gap: 4px; grid-template-columns: repeat(3,1fr); }
-      .modal-header .modal-title { font-size: 14px; }
+      .modal-header .modal-title { font-size: 15px; padding-left: 2px; }
       .search-wrapper { height: 65px; top: -65px; }
-      .search-field { height: 40px; font-size: 15px; padding: 0 10px 0 12px; }
+      .search-field { height: 40px; font-size: 15px; background-size: 18px 18px; background-position: 10px center; padding: 0 10px 0 12px; }
       .search-close { font-size: 15px; padding: 0 4px 0 12px; }
     }
   </style>
@@ -432,7 +418,7 @@
 <body>
 
   <header class="top-bar">
-    <img src="https://i.ibb.co/8nbrc06R/1768350301312.png" alt="Logo" class="logo" />
+    <img src="https://i.ibb.co/6Rc0szFB/Logo.png" alt="Logo" class="logo" />
     <i id="search-icon" class="fas fa-search search-icon"></i>
   </header>
 
@@ -441,9 +427,9 @@
     <div id="search-close" class="search-close">Cancelar</div>
   </div>
 
-  <div id="genres-container" class="genres-container"></div>
+  <div id="genres-container" class="genres-container animate-view"></div>
 
-  <main class="cards-wrapper">
+  <main class="cards-wrapper animate-view">
     <div id="empty-message" class="empty-message">Aquí se mostrarán tus cómics archivados</div>
     <div id="cards-container" class="cards-container"></div>
   </main>
@@ -476,32 +462,14 @@
   <div id="modal-overlay" class="modal-overlay" aria-hidden="true">
     <div class="modal-header">
       <div id="modal-title" class="modal-title">TÍTULO</div>
-      <div class="modal-stats-top">
-        <div class="modal-stat-item"><i class="fas fa-eye"></i> <span id="modal-views">0</span></div>
-        <div class="modal-stat-item"><i class="fas fa-heart"></i> <span id="modal-likes">0</span></div>
-      </div>
       <div id="modal-close" class="circle"><i class="fas fa-chevron-right"></i></div>
     </div>
     <div id="modal-gallery" class="modal-gallery"></div>
-    <button id="like-btn" title="Me gusta"><i class="fas fa-heart"></i></button>
     <button id="archive-btn" title="Archivar"><i class="fas fa-bookmark"></i></button>
     <button id="download-btn" title="Copiar enlaces"><i class="fas fa-download"></i></button>
   </div>
 
   <script>
-    // --- INICIALIZACIÓN DE FIREBASE ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyBIxw90sV9vaCi1GGVgnZwnoAtCh0FKQt0",
-      authDomain: "theowlhot.firebaseapp.com",
-      databaseURL: "https://theowlhot-default-rtdb.firebaseio.com",
-      projectId: "theowlhot",
-      storageBucket: "theowlhot.firebasestorage.app",
-      messagingSenderId: "612656088028",
-      appId: "1:612656088028:web:b56c6c7e97cd69a53a4519"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-
     const container       = document.getElementById('cards-container');
     const genresContainer = document.getElementById('genres-container');
     const cardsWrapper    = document.querySelector('.cards-wrapper');
@@ -512,15 +480,11 @@
     const galleryEl       = document.getElementById('modal-gallery');
     const downloadBtn     = document.getElementById('download-btn');
     const archiveBtn      = document.getElementById('archive-btn');
-    const likeBtn         = document.getElementById('like-btn');
     const logo            = document.querySelector('.logo');
     const searchIcon      = document.getElementById('search-icon');
     const searchField     = document.getElementById('search-field');
     const searchClose     = document.getElementById('search-close');
     const searchWrapper   = document.getElementById('search-wrapper'); 
-
-    const modalViewsText  = document.getElementById('modal-views');
-    const modalLikesText  = document.getElementById('modal-likes');
 
     const images = [
       
@@ -4064,7 +4028,7 @@
       // PUEDES AÑADIR MÁS IMÁGENES
     ];
 
-    let shuffledHomeAll = images.slice().sort(function(){ return Math.random() - 0.5; });
+    let shuffledHomeAll = images.slice().sort(() => Math.random() - 0.5);
     const imageCache = new Map();
     let loadQueue = [];
     let currentRenderToken = 0;
@@ -4073,70 +4037,12 @@
     let currentModalItem = null;
     let currentHomeGenreFilter = 'todos'; 
 
-    function getComicKey(item) {
-      return (item.link || item.text).replace(/[:.#$\[\]]/g, "_");
-    }
-
-    function incrementView(item) {
-      const key = getComicKey(item);
-      let viewedList = [];
-      try { viewedList = JSON.parse(localStorage.getItem('viewedComics')) || []; } catch(e){}
-      
-      if (viewedList.indexOf(key) === -1) {
-        const ref = database.ref('stats/' + key + '/views');
-        ref.transaction(function(current) {
-          return (current || 0) + 1;
-        });
-        viewedList.push(key);
-        localStorage.setItem('viewedComics', JSON.stringify(viewedList));
-      }
-    }
-
-    function toggleLike(item) {
-      const key = getComicKey(item);
-      const ref = database.ref('stats/' + key + '/likes');
-      let likedList = [];
-      try { likedList = JSON.parse(localStorage.getItem('likedComics')) || []; } catch(e){}
-      
-      const index = likedList.indexOf(key);
-      if (index > -1) {
-        likedList.splice(index, 1);
-        ref.transaction(function(current) { return Math.max(0, (current || 0) - 1); });
-        likeBtn.classList.remove('is-liked');
-      } else {
-        likedList.push(key);
-        ref.transaction(function(current) { return (current || 0) + 1; });
-        likeBtn.classList.add('is-liked');
-      }
-      localStorage.setItem('likedComics', JSON.stringify(likedList));
-    }
-
-    function isLiked(item) {
-      const key = getComicKey(item);
-      try {
-        const likedList = JSON.parse(localStorage.getItem('likedComics')) || [];
-        return likedList.indexOf(key) !== -1;
-      } catch(e){ return false; }
-    }
-
-    let activeModalStatsRef = null;
-    function listenToModalStats(item) {
-      const key = getComicKey(item);
-      if (activeModalStatsRef) activeModalStatsRef.off();
-      activeModalStatsRef = database.ref('stats/' + key);
-      activeModalStatsRef.on('value', function(snapshot) {
-        const data = snapshot.val() || { views: 0, likes: 0 };
-        modalViewsText.textContent = data.views || 0;
-        modalLikesText.textContent = data.likes || 0;
-      });
-    }
-
     function sanitizeLocalStorage() {
       try {
-        const allowed = ['dataSaver','cardTitleSize', 'archivedComics', 'likedComics', 'viewedComics'];
+        const allowed = ['dataSaver','cardTitleSize', 'archivedComics'];
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const key = localStorage.key(i);
-          if (allowed.indexOf(key) === -1) localStorage.removeItem(key);
+          if (!allowed.includes(key)) localStorage.removeItem(key);
         }
       } catch (e) {}
     }
@@ -4164,9 +4070,15 @@
       scrollState[tab] = window.scrollY || 0;
     }
     function restoreScrollForTab(tab) {
-      requestAnimationFrame(function() {
+      requestAnimationFrame(() => {
         window.scrollTo(0, scrollState[tab] || 0);
       });
+    }
+
+    function triggerViewAnimation(element) {
+      element.classList.remove('animate-view');
+      void element.offsetWidth;
+      element.classList.add('animate-view');
     }
 
     function applyComicColors(){
@@ -4180,7 +4092,7 @@
       try {
         document.documentElement.style.setProperty('--icon-color-normal', iconColorNormal);
         document.documentElement.style.setProperty('--icon-color-active', iconColorActive);
-        document.querySelectorAll('.bottom-bar .item').forEach(function(it){
+        document.querySelectorAll('.bottom-bar .item').forEach(it=>{
           const isActive = it.classList.contains('active');
           const img = it.querySelector('img.home-icon');
           if (img) {
@@ -4190,6 +4102,7 @@
             it.style.color = isActive ? iconColorActive : iconColorNormal;
             return;
           }
+          const icon = it.querySelector('i');
           if (isActive) {
             it.style.color = iconColorActive;
           } else {
@@ -4222,7 +4135,7 @@
         setImgFromCacheImmediate(imgEl, original);
         return;
       }
-      if (loadQueue.some(function(j){ return j.imgEl === imgEl && j.originalUrl === original && j.token === token; })) return;
+      if (loadQueue.some(j => j.imgEl === imgEl && j.originalUrl === original && j.token === token)) return;
       loadQueue.push({ imgEl, originalUrl: original, token });
       processQueue();
     }
@@ -4234,8 +4147,8 @@
       try {
         while (myToken === currentRenderToken && loadQueue.length) {
           if (pauseCardLoading) {
-            await new Promise(function(resolve) {
-              const iv = setInterval(function() { if (!pauseCardLoading) { clearInterval(iv); resolve(); } }, 60);
+            await new Promise(resolve => {
+              const iv = setInterval(() => { if (!pauseCardLoading) { clearInterval(iv); resolve(); } }, 60);
             });
             if (myToken !== currentRenderToken) break;
           }
@@ -4260,13 +4173,13 @@
             delete imgEl.dataset.loading;
             if (myToken !== currentRenderToken) break;
             if (imgEl) {
-              imgEl.onload = function() {
+              imgEl.onload = () => {
                 imgEl.style.display = 'block';
                 imgEl.style.opacity = '1'; 
                 if (spinner) spinner.remove();
                 imgEl.dataset.loaded = 'true';
               };
-              imgEl.onerror = function() {
+              imgEl.onerror = () => {
                  if (spinner) spinner.remove();
                  imgEl.dataset.loaded = 'error';
               };
@@ -4287,7 +4200,7 @@
       try {
         const spinner = imgEl.parentElement.querySelector('.spinner');
         const cachedUrl = originalUrl.startsWith('http') ? imageCache.get(originalUrl) : originalUrl;
-        imgEl.onload = function() {
+        imgEl.onload = () => {
             imgEl.style.display = 'block';
             imgEl.style.opacity = '1';
             if (spinner) spinner.remove();
@@ -4313,10 +4226,10 @@
       }
       imgEl.dataset.loading = 'true';
       const spinner = imgEl.parentElement ? imgEl.parentElement.querySelector('.spinner') : null;
-      fetchAndCache(original).then(function(objectUrl) {
+      fetchAndCache(original).then(objectUrl => {
         if (tokenForThisRender !== currentRenderToken) { delete imgEl.dataset.loading; return; }
         if (!imgEl) return;
-        imgEl.onload = function() {
+        imgEl.onload = () => {
             imgEl.style.display = 'block';
             imgEl.style.opacity = '1';
             if (spinner && spinner.parentElement) spinner.remove();
@@ -4324,7 +4237,7 @@
             delete imgEl.dataset.loading;
         };
         imgEl.src = objectUrl;
-      }).catch(function(err) {
+      }).catch(err => {
         if (spinner && spinner.parentElement) spinner.remove();
         imgEl.dataset.loaded = 'error';
         delete imgEl.dataset.loading;
@@ -4335,9 +4248,9 @@
       const token = currentRenderToken;
       const imgs = Array.from(container.querySelectorAll('img'));
       if (!dataSaver) {
-        imgs.forEach(function(imgEl){ loadImageParallel(imgEl, token); });
+        imgs.forEach(imgEl => { loadImageParallel(imgEl, token); });
       } else {
-        imgs.forEach(function(imgEl){
+        imgs.forEach(imgEl => {
           const original = imgEl.dataset.src;
           if (!original) return;
           if (imageCache.has(original) || !original.startsWith('http')) setImgFromCacheImmediate(imgEl, original);
@@ -4353,27 +4266,12 @@
     function createCardElement(item) {
       const card = document.createElement('div');
       card.className = 'card';
-      card.addEventListener('click', function(){ openModal(item); });
+      card.addEventListener('click', () => openModal(item));
       const full = (item.text || '').toUpperCase();
-      const key = getComicKey(item);
-      
       card.innerHTML = `
-        <div class="card-stats-overlay">
-          <div class="stat-badge"><i class="fas fa-eye"></i> <span id="v-${key}">0</span></div>
-          <div class="stat-badge"><i class="fas fa-heart"></i> <span id="l-${key}">0</span></div>
-        </div>
         <div class="image-wrapper"><div class="spinner"></div><img data-src="${item.src}" alt="${item.text}" /></div>
         <div class="card-title" title="${full}"><span class="card-title-text">${full}</span></div>
       `;
-
-      database.ref('stats/' + key).on('value', function(snapshot) {
-        const data = snapshot.val() || { views: 0, likes: 0 };
-        const vEl = document.getElementById('v-' + key);
-        const lEl = document.getElementById('l-' + key);
-        if (vEl) vEl.textContent = data.views || 0;
-        if (lEl) lEl.textContent = data.likes || 0;
-      });
-
       return card;
     }
 
@@ -4384,7 +4282,7 @@
       genresContainer.style.display = 'none';
       cardsWrapper.style.display    = 'block';
       container.innerHTML = '';
-      items.forEach(function(item){
+      items.forEach(item => {
         container.appendChild(createCardElement(item));
       });
       applyComicColors();
@@ -4409,7 +4307,7 @@
     function renderNextPage() {
       if (!currentVisibleList || pageIndex * PAGE_SIZE >= currentVisibleList.length) return;
       const slice = currentVisibleList.slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE);
-      slice.forEach(function(item){
+      slice.forEach(item => {
         container.appendChild(createCardElement(item));
       });
       applyComicColors();
@@ -4418,9 +4316,10 @@
       pageIndex++;
     }
 
-    function renderGenres() {
+    function renderGenres(shouldAnimate = true) {
       cardsWrapper.style.display = 'none';
       genresContainer.style.display = 'flex';
+      if (shouldAnimate) triggerViewAnimation(genresContainer);
       genresContainer.innerHTML = '';
 
       const header = document.createElement('div');
@@ -4465,16 +4364,16 @@
       const fontSlider = header.querySelector('#title-font-slider');
       const fontValDisplay = header.querySelector('#title-size-val');
 
-      fontSlider.addEventListener('input', function(e){
+      fontSlider.addEventListener('input', (e) => {
         cardTitleSize = e.target.value;
-        fontValDisplay.textContent = cardTitleSize + "px";
-        document.documentElement.style.setProperty('--card-title-font-size', cardTitleSize + "px");
+        fontValDisplay.textContent = `${cardTitleSize}px`;
+        document.documentElement.style.setProperty('--card-title-font-size', `${cardTitleSize}px`);
         try { localStorage.setItem('cardTitleSize', cardTitleSize); sanitizeLocalStorage(); } catch(e){}
       });
 
       dataSaverCheckbox.checked = dataSaver;
       dataSaverSwitchEl.classList.toggle('on', dataSaver);
-      dataSaverCheckbox.addEventListener('change', function(e){
+      dataSaverCheckbox.addEventListener('change', (e) => {
         dataSaver = e.target.checked;
         try { localStorage.setItem('dataSaver', dataSaver ? 'true' : 'false'); sanitizeLocalStorage(); } catch (err) {}
         dataSaverSwitchEl.classList.toggle('on', dataSaver);
@@ -4483,36 +4382,39 @@
       });
 
       const genreMap = {};
-      images.forEach(function(item){
-        const parts = (item.genre || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-        parts.forEach(function(g){
+      images.forEach(item => {
+        const parts = (item.genre || '').split(',').map(s => s.trim()).filter(Boolean);
+        parts.forEach(g => {
           const name = g.toLowerCase();
           genreMap[name] = (genreMap[name] || 0) + 1;
         });
       });
 
-      let visibleGenres = Object.keys(genreMap).filter(function(g){ return !!g; }).map(function(g){ 
-        return { name: g, label: g.charAt(0).toUpperCase() + g.slice(1), count: genreMap[g] };
-      });
+      let visibleGenres = Object.keys(genreMap).filter(g => !!g).map(g => ({ 
+        name: g, 
+        label: g.charAt(0).toUpperCase() + g.slice(1), 
+        count: genreMap[g] 
+      }));
 
-      visibleGenres.sort(function(a,b){ return b.count - a.count || a.label.localeCompare(b.label); });
+      visibleGenres.sort((a,b) => b.count - a.count || a.label.localeCompare(b.label));
 
-      visibleGenres.forEach(function(gObj){
+      visibleGenres.forEach(gObj => {
         const div = document.createElement('div');
         div.className = 'genre-item';
-        div.innerHTML = '<span class="genre-name">' + gObj.label + '</span><span class="genre-count">' + gObj.count + '</span>';
-        div.addEventListener('click', function(){
+        div.innerHTML = `<span class="genre-name">${gObj.label}</span><span class="genre-count">${gObj.count}</span>`;
+        div.addEventListener('click', () => {
           saveScrollForActiveTab();
-          document.querySelectorAll('.bottom-bar .item').forEach(function(i){ i.classList.remove('active'); });
+          document.querySelectorAll('.bottom-bar .item').forEach(i => i.classList.remove('active'));
           document.querySelector('.bottom-bar .item[data-tab="genres"]').classList.add('active');
           searchField.value = gObj.label;
           searchWrapper.classList.add('active');
           searchIcon.style.display = 'none';
           logo.style.opacity = '0';
           logo.style.pointerEvents = 'none';
-          let filtered = images.filter(function(item){ return (item.genre || '').toLowerCase().split(',').map(function(s){ return s.trim(); }).indexOf(gObj.name) !== -1; });
+          let filtered = images.filter(item => (item.genre || '').toLowerCase().split(',').map(s => s.trim()).includes(gObj.name));
           if (dataSaver) renderCardsPaged(filtered);
           else renderCardsFull(filtered);
+          triggerViewAnimation(cardsWrapper);
           restoreScrollForTab('genres');
         });
         genresContainer.appendChild(div);
@@ -4522,25 +4424,31 @@
     function renderCardsFromCurrentFilter() {
       const tab = getActiveTab();
       if (tab === 'genres') return; 
+      
       const q = searchField.value.trim().toLowerCase();
       let items = getCurrentItems(); 
       
-      if (tab === 'archived' && items.length === 0) emptyMessage.style.display = 'block';
-      else emptyMessage.style.display = 'none';
+      // Control del mensaje de archivados vacío
+      if (tab === 'archived' && items.length === 0) {
+          emptyMessage.style.display = 'block';
+      } else {
+          emptyMessage.style.display = 'none';
+      }
 
       if (q) {
-         items = items.filter(function(item){
-           return (item.text && item.text.toLowerCase().indexOf(q) !== -1) || (item.genre && item.genre.toLowerCase().indexOf(q) !== -1);
-         });
+         items = items.filter(item =>
+           (item.text && item.text.toLowerCase().includes(q)) || (item.genre && item.genre.toLowerCase().includes(q))
+         );
       } else if (tab === 'home') {
         const filter = currentHomeGenreFilter.toLowerCase();
         if (filter && filter !== 'todos') {
-          items = items.filter(function(item){ return (item.genre || '').toLowerCase().split(',').map(function(s){ return s.trim(); }).indexOf(filter) !== -1; });
+          items = items.filter(item => (item.genre || '').toLowerCase().split(',').map(s => s.trim()).includes(filter));
         }
       }
       
       if (dataSaver) renderCardsPaged(items);
       else renderCardsFull(items);
+      triggerViewAnimation(cardsWrapper);
     }
 
     let modalBatchController = null;
@@ -4548,16 +4456,18 @@
     let searchHistoryPushed = false;
 
     function getArchivedComics() {
-      try { return JSON.parse(localStorage.getItem('archivedComics')) || []; } catch(e) { return []; }
+      try {
+        return JSON.parse(localStorage.getItem('archivedComics')) || [];
+      } catch(e) { return []; }
     }
 
     function isArchived(text) {
-      return getArchivedComics().some(function(c){ return c.text === text; });
+      return getArchivedComics().some(c => c.text === text);
     }
 
     function toggleArchive(item) {
       let archived = getArchivedComics();
-      const index = archived.findIndex(function(c){ return c.text === item.text; });
+      const index = archived.findIndex(c => c.text === item.text);
       if (index > -1) {
         archived.splice(index, 1);
         archiveBtn.classList.remove('is-archived');
@@ -4573,11 +4483,6 @@
       currentModalItem = item;
       if (isArchived(item.text)) archiveBtn.classList.add('is-archived');
       else archiveBtn.classList.remove('is-archived');
-      if (isLiked(item)) likeBtn.classList.add('is-liked');
-      else likeBtn.classList.remove('is-liked');
-
-      incrementView(item);
-      listenToModalStats(item);
 
       if (dataSaver) pauseCardLoading = true;
       if (modalBatchController) { try { modalBatchController.abort(); } catch(e) {} modalBatchController = null; }
@@ -4598,6 +4503,7 @@
           const spinner = document.createElement('div');
           spinner.className = 'spinner';
           const img = document.createElement('img');
+          img.dataset.original = g.src;
           wrap.appendChild(spinner);
           wrap.appendChild(img);
           galleryEl.appendChild(wrap);
@@ -4605,31 +4511,32 @@
             const objectUrl = await fetchAndCache(g.src); 
             if (signal.aborted) break;
             img.src = objectUrl;
-            img.onload = function(){
+            img.onload = () => {
                 img.style.display = 'block';
                 img.style.opacity = '1';
                 if (spinner && spinner.parentElement) spinner.remove();
             };
           } catch (err) { if (spinner && spinner.parentElement) spinner.remove(); }
-          await new Promise(function(r){ setTimeout(r, 40); });
+          await new Promise(r => setTimeout(r, 40));
         }
       } else {
-        const wrappers = item.gallery.map(function(g){
+        const wrappers = item.gallery.map(g => {
           const wrap = document.createElement('div');
           wrap.className = 'img-wrap';
           const spinner = document.createElement('div');
           spinner.className = 'spinner';
           const img = document.createElement('img');
+          img.dataset.original = g.src;
           wrap.appendChild(spinner);
           wrap.appendChild(img);
           galleryEl.appendChild(wrap);
-          return { img: img, spinner: spinner, src: g.src };
+          return { img, spinner, src: g.src };
         });
-        await Promise.all(wrappers.map(async function(w){
+        await Promise.all(wrappers.map(async w => {
           try {
             const objectUrl = await fetchAndCache(w.src);
             w.img.src = objectUrl;
-            w.img.onload = function(){
+            w.img.onload = () => {
                 w.img.style.display = 'block';
                 w.img.style.opacity = '1';
                 if (w.spinner && w.spinner.parentElement) w.spinner.remove();
@@ -4639,29 +4546,29 @@
       }
     }
 
-    function closeModal(fromPopstate) {
+    function closeModal(fromPopstate = false) {
       if (!fromPopstate && modalHistoryPushed) { try { history.back(); } catch(e) {} return; }
       overlay.classList.remove('show');
       document.body.classList.remove('modal-open');
-      if (activeModalStatsRef) { activeModalStatsRef.off(); activeModalStatsRef = null; }
       currentModalItem = null;
       if (modalBatchController) { try { modalBatchController.abort(); } catch(e) {} modalBatchController = null; }
       if (dataSaver) { pauseCardLoading = false; processQueue(); } else { startLoadingForVisibleCards(); }
       modalHistoryPushed = false;
     }
 
-    closeBtn.addEventListener('click', function(){ closeModal(false); });
+    closeBtn.addEventListener('click', () => closeModal());
     
-    downloadBtn.addEventListener('click', function(){
-      let links = currentModalItem.gallery.map(function(g){ return g.src; }).filter(Boolean);
+    downloadBtn.addEventListener('click', () => {
+      let links = currentModalItem.gallery.map(g => g.src).filter(Boolean);
       const encrypted = btoa(JSON.stringify({ name: titleEl.textContent.trim(), urls: links }));
-      navigator.clipboard.writeText(encrypted).finally(function(){ window.open('https://skycomixstudio.github.io/Centro-de-descarga-Skycomix/', '_blank'); });
+      navigator.clipboard.writeText(encrypted).finally(()=> { window.open('https://skycomixstudio.github.io/Centro-de-descarga-Skycomix/', '_blank'); });
     });
 
-    archiveBtn.addEventListener('click', function(){ if (currentModalItem) toggleArchive(currentModalItem); });
-    likeBtn.addEventListener('click', function(){ if (currentModalItem) toggleLike(currentModalItem); });
+    archiveBtn.addEventListener('click', () => {
+        if (currentModalItem) toggleArchive(currentModalItem);
+    });
 
-    searchIcon.addEventListener('click', function(){
+    searchIcon.addEventListener('click', () => {
       searchWrapper.classList.add('active');
       searchIcon.style.display = 'none';
       logo.style.opacity = '0';
@@ -4670,7 +4577,7 @@
       try { if (!searchHistoryPushed) { history.pushState({skySearchOpen: true}, ''); searchHistoryPushed = true; } } catch(e){}
     });
 
-    function closeSearch(fromPopstate) {
+    function closeSearch(fromPopstate = false) {
       if (!fromPopstate && searchHistoryPushed) { try { history.back(); } catch(e) {} return; }
       searchField.value = '';
       searchWrapper.classList.remove('active');
@@ -4681,10 +4588,10 @@
       searchHistoryPushed = false;
     }
 
-    searchClose.addEventListener('click', function(){ closeSearch(false); });
-    searchField.addEventListener('input', function(){ renderCardsFromCurrentFilter(); }); 
+    searchClose.addEventListener('click', () => closeSearch());
+    searchField.addEventListener('input', () => renderCardsFromCurrentFilter()); 
 
-    window.addEventListener('popstate', function(){
+    window.addEventListener('popstate', () => {
       if (searchWrapper.classList.contains('active')) { closeSearch(true); return; }
       if (overlay.classList.contains('show')) { closeModal(true); return; }
     });
@@ -4692,13 +4599,15 @@
     function getCurrentItems() {
       const tab = getActiveTab();
       if (tab === 'new') {
-        return images.slice().sort(function(a,b){
+        return images.slice().sort((a,b)=> {
           const na = (a.link || '0:0').split(':')[1] || '0';
           const nb = (b.link || '0:0').split(':')[1] || '0';
           return parseInt(nb,10) - parseInt(na,10);
         }).slice(0,15);
       }
-      if (tab === 'archived') return getArchivedComics();
+      if (tab === 'archived') {
+          return getArchivedComics();
+      }
       return shuffledHomeAll;
     }
 
@@ -4719,17 +4628,17 @@
       restoreScrollForTab(tab);
     }
 
-    document.querySelectorAll('.bottom-bar .item').forEach(function(tabEl){
-      tabEl.addEventListener('click', function(){
+    document.querySelectorAll('.bottom-bar .item').forEach(tabEl => {
+      tabEl.addEventListener('click', () => {
         const wasActive = tabEl.classList.contains('active');
         const tab = tabEl.dataset.tab;
         saveScrollForActiveTab();
         if (wasActive && tab === 'home') {
-          shuffledHomeAll = images.slice().sort(function(){ return Math.random() - 0.5; });
+          shuffledHomeAll = images.slice().sort(() => Math.random() - 0.5);
           renderCurrent();
           return;
         }
-        document.querySelectorAll('.bottom-bar .item').forEach(function(t){ t.classList.remove('active'); });
+        document.querySelectorAll('.bottom-bar .item').forEach(t => t.classList.remove('active'));
         tabEl.classList.add('active');
         applyIconColors();
         renderCurrent();
@@ -4738,9 +4647,11 @@
 
     renderCurrent(); 
 
-    window.addEventListener('scroll', function(){
+    window.addEventListener('scroll', () => {
       if (!dataSaver || !currentVisibleList || pageIndex * PAGE_SIZE >= currentVisibleList.length) return;
-      if ((window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 120)) renderNextPage();
+      if ((window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 120)) {
+        renderNextPage();
+      }
     });
   </script>
 </body>
